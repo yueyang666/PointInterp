@@ -1,69 +1,71 @@
-# PointInterp - 輕量級LiDAR點雲超解析度框架
+# PointInterp - Lightweight LiDAR Point Cloud Super-Resolution Framework
 
-PointInterp 是一個輕量且高效的 LiDAR 點雲超解析度（Super-Resolution）非2D投影的解決方案，透過插值法和基於 PointNet 的神經網路模型，實現點雲的稀疏掃描線增強，例如從16線提升到32線、或32線提升到64線，顯著提高點雲的解析度與細節。
+PointInterp is a lightweight and efficient non-2D-projection solution for LiDAR point cloud super-resolution. Through interpolation methods and a PointNet-based neural network model, it enhances sparse scan lines in point clouds, such as upgrading from 16 lines to 32 lines or from 32 lines to 64 lines, significantly improving point cloud resolution and detail.  
 
-## 專案概述
-本專案主要提供以下功能：
+[繁體中文版本](README_zh.md)
 
-* **數據轉換管線**：將 KITTI `.bin` 原始點雲轉換為結構化的 HDF5 格式。
-* **傳統插值法**：提供穩定的插值基準作為比較依據。
-* **PointNet-SR-Mini 神經網路**：專為點雲超解析度設計的輕量級網路。
-* **Chamfer Distance 計算工具**：用於評估點雲預測的精確程度。
-* **量化分析與可視化腳本**：協助分析點雲處理結果。
+## Project Overview
+This project provides the following main functionalities:
 
-## 主要功能
-* **多掃描線HDF5轉換器** (`dataset_to_h5.py`)：將64線原始點雲拆分為32線及16線，並存成HDF5檔案。
-* **Chamfer Distance實現**：提供 NumPy 和 KD-Tree 兩種高效的計算方式 (`metrics.py`)。
-* **插值基準方法**：提供角度與方位角(azimuth)的雙向插值 (`interpolation.py`)。
-* **PointNet-SR-Mini 模型** (`pointnet_sr_mini.py`)：
+* **Data Conversion Pipeline**: Converts raw KITTI `.bin` point clouds into structured HDF5 format.
+* **Traditional Interpolation Methods**: Provides stable interpolation baselines for comparison.
+* **PointNet-SR-Mini Neural Network**: A lightweight network specifically designed for point cloud super-resolution.
+* **Chamfer Distance Calculation Tools**: For evaluating the accuracy of point cloud predictions.
+* **Quantitative Analysis and Visualization Scripts**: Assists in analyzing point cloud processing results.
 
-  * 支援16→32及32→64掃描線增強。
-  * 可從checkpoint繼續訓練，內建EarlyStopping與學習率調整機制。
-* **分析腳本** (`analyze.py`, `main.py`)：
+## Key Features
+* **Multi-Scan Line HDF5 Converter** (`dataset_to_h5.py`): Splits 64-line original point clouds into 32-line and 16-line versions, saving them as HDF5 files.
+* **Chamfer Distance Implementation**: Provides both NumPy and KD-Tree efficient calculation methods (`metrics.py`).
+* **Interpolation Baseline Method**: Provides bi-directional interpolation based on angle and azimuth (`interpolation.py`).
+* **PointNet-SR-Mini Model** (`pointnet_sr_mini.py`):
 
-  * 對插值與神經網路預測的效果進行量化評估。
-  * 提供單禎點雲的即時可視化比較。
+  * Supports 16→32 and 32→64 scan line enhancement.
+  * Can resume training from checkpoints, with built-in EarlyStopping and learning rate adjustment mechanisms.
+* **Analysis Scripts** (`analyze.py`, `main.py`):
 
-## 主要演算法邏輯
+  * Quantitatively evaluates the effectiveness of interpolation and neural network predictions.
+  * Provides real-time visualization comparison for single-frame point clouds.
 
-本專案針對 LiDAR 稀疏掃描線提出「差集‑補點」式超解析演算法，流程分為插值基線與深度增補兩層。
+## Main Algorithm Logic
 
-**1. 插值基線**  
-先以仰角 θ=arcsin(z/r) 將 N 線點雲分箱；對相鄰兩環以 KD‑Tree 配對並插入中點
+This project proposes a "difference set-point completion" super-resolution algorithm for sparse LiDAR scan lines, with a workflow divided into interpolation baseline and deep enhancement layers.
+
+**1. Interpolation Baseline**  
+First, divide the N-line point cloud into bins based on elevation angle θ=arcsin(z/r); for adjacent rings, use KD-Tree to pair and insert midpoints:
 
 $$
 p_{\text{mid}}=\tfrac12(p_i+p_j)
 $$
 
-再於方位角 φ (0–2π) 以 Δφ=0.5° 均衡抽補，確保最終環數精確為目標 R\_t。該步可單獨作為傳統基準。
+Then, evenly supplement at azimuth angle φ (0–2π) with Δφ=0.5° to ensure the final number of rings precisely equals the target R\_t. This step can independently serve as a traditional baseline.
 
-**2. 差集擷取**  
-對原始低環點雲 P\_orig 與高環點雲 P\_tgt，取
+**2. Difference Set Extraction**  
+For the original low-resolution point cloud P\_orig and high-resolution point cloud P\_tgt, compute:
 
 $$
 \Delta P=\{\,t\in P_{\text{tgt}}\mid\min_{o\in P_{\text{orig}}}\|t-o\|>\tau\}
 $$
 
-(τ≈0.05 m) 作為待補點集合。
+(τ≈0.05 m) as the set of points to be completed.
 
-**3. PointNet‑SR‑Mini**  
-對 ΔP( B×N×3 ) 先以 1×1 卷積提特徵 f\_i∈ℝ²⁵⁶，再經 max‑pool 得全域向量 g∈ℝ²⁵⁶，拼接後輸出偏移量 o，最終
+**3. PointNet-SR-Mini**  
+For ΔP( B×N×3 ), first extract features f\_i∈ℝ²⁵⁶ using 1×1 convolution, then obtain a global vector g∈ℝ²⁵⁶ through max-pooling. After concatenation, output the offset o, and finally:
 
 $$
 P_{\text{pred}}=\Delta P+o
 $$
 
-**4. 損失函數**  
-採平方 Chamfer 距離
+**4. Loss Function**  
+Adopts squared Chamfer distance:
 
 $$
 \operatorname{CD}(P,G)=\frac1{|G|}\sum_{g\in G}\min_{p\in P}\|g-p\|^{2}
 +\frac1{|P|}\sum_{p\in P}\min_{g\in G}\|p-g\|^{2}
 $$
 
-其中 G 為真實高環點雲。優化器用 Adam；ReduceLROnPlateau 動態調降學習率並結合 Early‑Stopping。
+where G is the ground truth high-resolution point cloud. Adam optimizer is used; ReduceLROnPlateau dynamically reduces learning rate combined with Early-Stopping.
 
-**5. 深度學習模型**  
+**5. Deep Learning Model**  
 
 ```scss
 Input (B, N, 3)
@@ -83,49 +85,49 @@ Output: Predicted Offsets + Input
 
 ![images](./figures/architecture.png)
 
-**6. 效果**
-在 KITTI 資料集，16→32 環平均 CD 較插值再降約 10%，32→64 環降幅逾 60%；RTX 3080 上可即時推論。演算法輕量、易訓練，亦可替換為 PointNet++、PU‑Net 等更深模型以進一步提升品質。
+**6. Results**
+On the KITTI dataset, the 16→32 line average CD improves by about 10% compared to interpolation, while the 32→64 line improves by over 60%. Real-time inference is possible on an RTX 3080. The algorithm is lightweight and easy to train, and can also be replaced with deeper models such as PointNet++, PU-Net, etc. for further quality improvement.
 
-下圖為KITTI Dataset隨機某禎誤差可視化結果，青色為Ground Truth，紅色為推理結果與GT之差集
+The figure below shows the error visualization result for a random frame from the KITTI Dataset, where cyan represents the Ground Truth, and red represents the difference set between the inference result and GT:
 ![alt text](./figures/pcd_residual.png)
 
-## 專案結構
+## Project Structure
 ```plaintext
 .
-├── dataset_to_h5.py        # 將KITTI原始.bin檔案轉換為HDF5格式 (16/32/64掃描線)
-├── io.py                   # HDF5點雲資料載入工具
-├── metrics.py              # Chamfer Distance及差集計算工具
-├── interpolation.py        # 點雲插值工具
-├── pointnet_sr_mini.py     # PointNet-SR-Mini模型定義與訓練
-├── analyze.py              # 插值基準法分析腳本
-├── main.py                 # 單禎點雲推論與Open3D可視化腳本
-├── dataset/                # 放置訓練與測試用的HDF5資料
-├── ckpt_srmini/            # 模型checkpoint儲存資料夾
-└── figures/                # Chamfer Distance分析曲線圖
+├── dataset_to_h5.py        # Converts KITTI original .bin files to HDF5 format (16/32/64 scan lines)
+├── io.py                   # HDF5 point cloud data loading tools
+├── metrics.py              # Chamfer Distance and difference set calculation tools
+├── interpolation.py        # Point cloud interpolation tools
+├── pointnet_sr_mini.py     # PointNet-SR-Mini model definition and training
+├── analyze.py              # Interpolation baseline analysis script
+├── main.py                 # Single-frame point cloud inference and Open3D visualization script
+├── dataset/                # Storage for training and testing HDF5 data
+├── ckpt_srmini/            # Model checkpoint storage folder
+└── figures/                # Chamfer Distance analysis curve charts
 ```
 
-## 資料集結構
+## Dataset Structure
 ``` plaintext
 /train.h5
- ├── 16/    （16線點雲）
- │    ├── 2011_09_26_0001_0000000000  → (N, 4)  （包含 x, y, z, intensity）
+ ├── 16/    (16-line point clouds)
+ │    ├── 2011_09_26_0001_0000000000  → (N, 4)  (includes x, y, z, intensity)
  │    ├── 2011_09_26_0001_0000000001  → (M, 4)
- │    └── ...（更多 frame）
+ │    └── ...(more frames)
  │
- ├── 32/    （32線點雲）
+ ├── 32/    (32-line point clouds)
  │    ├── 2011_09_26_0001_0000000000  → (N, 4)
  │    ├── 2011_09_26_0001_0000000001  → (M, 4)
- │    └── ...（更多 frame）
+ │    └── ...(more frames)
  │
- └── 64/    （64線點雲，Ground Truth）
+ └── 64/    (64-line point clouds, Ground Truth)
       ├── 2011_09_26_0001_0000000000  → (N, 4)
       ├── 2011_09_26_0001_0000000001  → (M, 4)
-      └── ...（更多 frame）
+      └── ...(more frames)
 
 ```
 
-## 軟體依賴
-本專案適用於 Python 3.8+，並需安裝以下第三方套件：
+## Software Dependencies
+This project is compatible with Python 3.8+ and requires the following third-party packages:
 
 * [PyTorch](https://pytorch.org/)
 * [Open3D](http://www.open3d.org/)
@@ -135,33 +137,33 @@ Output: Predicted Offsets + Input
 * [matplotlib](https://matplotlib.org/)
 * [numpy](https://numpy.org/)
 
-安裝指令：
+Installation command:
 
 ```bash
 pip install torch torchvision open3d scipy h5py tqdm matplotlib numpy
 ```
 
-## 資料準備流程
+## Data Preparation Process
 
-1. 修改 `dataset_to_h5.py` 中的 `bin_folder_list` 變數，指定你的KITTI原始`.bin`檔案所在目錄。
+1. Modify the `bin_folder_list` variable in `dataset_to_h5.py` to specify the directory containing your KITTI original `.bin` files.
 
-2. 執行以下指令進行資料轉換：
+2. Execute the following command for data conversion:
 
 ```bash
 python dataset_to_h5.py
 ```
 
-執行後會產生HDF5檔案（預設名稱為`verify_data.h5`），包含16、32、64線點雲。
+This will generate an HDF5 file (default name `verify_data.h5`) containing 16, 32, and 64-line point clouds.
 
-3. 將生成的檔案移動至`dataset/`資料夾：
+3. Move the generated file to the `dataset/` folder:
 
 ```bash
 mv verify_data.h5 dataset/train_sample148.h5
 ```
 
-## 模型訓練方式
+## Model Training Method
 
-範例：
+Example:
 
 ```bash
 python pointnet_sr_mini.py \
@@ -174,16 +176,16 @@ python pointnet_sr_mini.py \
   --out ckpt_srmini
 ```
 
-參數說明：
+Parameter description:
 
-* `--train_h5`: 訓練用的HDF5檔案路徑。
-* `--val_h5`: 驗證用HDF5檔案路徑（非必須）。
-* `--orig`/`--tgt`: 原始與目標掃描線數。
-* `--epochs`: 訓練回合數。
-* `--bs`: 批次大小。
-* `--out`: checkpoint與記錄儲存路徑。
+* `--train_h5`: Path to the HDF5 file for training.
+* `--val_h5`: Path to the HDF5 file for validation (optional).
+* `--orig`/`--tgt`: Original and target scan line numbers.
+* `--epochs`: Number of training epochs.
+* `--bs`: Batch size.
+* `--out`: Path for checkpoint and record storage.
 
-訓練完成後的資料夾內容：
+Contents of the folder after training:
 
 ```plaintext
 ckpt_srmini/
@@ -192,62 +194,62 @@ ckpt_srmini/
 └── loss_curve.png
 ```
 
-## 推論與分析
+## Inference and Analysis
 
-### 模型推論評估
+### Model Inference Evaluation
 
-使用神經網路模型進行推論並計算Chamfer Distance：
+Use the neural network model for inference and calculate Chamfer Distance:
 
 ```bash
 python your_script.py --filepath dataset/test_sample148.h5 --interpolation dl
 ```
 
-### 傳統插值分析基準
+### Traditional Interpolation Analysis Baseline
 
 ```bash
 python your_script.py --filepath dataset/test_sample148.h5 --interpolation linear
 ```
 
-### 單禎點雲即時視覺化
+### Single-Frame Point Cloud Real-Time Visualization
 
-隨機選擇一禎進行即時可視化比較效果：
+Randomly select a frame for real-time visual comparison:
 
 ```bash
 python main.py
 ```
 
-## 分析結果
-下列資訊使用 `test_sample148.h5` 測試集
-* **16線→32線**：Chamfer Distance 受限於原始資料稀疏性，CD平均約為0.34，效果較插值法改善10%左右。
+## Analysis Results
+The following information uses the `test_sample148.h5` test set
+* **16 lines→32 lines**: Limited by the sparsity of the original data, the average Chamfer Distance is about 0.34, improving by about 10% compared to the interpolation method.
 ```plaintext
-=== 16->32 PointNet-SR-mini 分析報告 ===
-總Frame數量: 148
-平均 Chamfer Distance: 0.345550
-標準差: 0.262420
-最大 Chamfer Distance: 2.427180 (Frame 141)
-最小 Chamfer Distance: 0.112630 (Frame 36)
+=== 16->32 PointNet-SR-mini Analysis Report ===
+Total Frames: 148
+Average Chamfer Distance: 0.345550
+Standard Deviation: 0.262420
+Maximum Chamfer Distance: 2.427180 (Frame 141)
+Minimum Chamfer Distance: 0.112630 (Frame 36)
 ```
-* **32線→64線**：Chamfer Distance 平均約為0.054，明顯較插值法優化達60%以上。
+* **32 lines→64 lines**: The average Chamfer Distance is about 0.054, significantly optimized by over 60% compared to the interpolation method.
 ```plaintext
-=== 32->64 PointNet-SR-mini 分析報告 ===
-總Frame數量: 148
-平均 Chamfer Distance: 0.054512
-標準差: 0.029365
-最大 Chamfer Distance: 0.191678 (Frame 25)
-最小 Chamfer Distance: 0.009076 (Frame 36)
+=== 32->64 PointNet-SR-mini Analysis Report ===
+Total Frames: 148
+Average Chamfer Distance: 0.054512
+Standard Deviation: 0.029365
+Maximum Chamfer Distance: 0.191678 (Frame 25)
+Minimum Chamfer Distance: 0.009076 (Frame 36)
 ```
-* 所有分析曲線圖會儲存於`figures/`資料夾。
+* All analysis curve charts are saved in the `figures/` folder.
 
-## 建議
+## Suggestions
 
-* 嘗試採用更強大的模型，例如PointNet++、PU-Net、EdgeConv等。
-* 加入 Earth Mover's Distance (EMD)、排斥損失 (Repulsion Loss)、多尺度特徵融合與後處理技巧（如Voxel濾波、kNN平滑）。
-* 可擴充至更大規模資料集如NuScenes、應用混合精度訓練、One-Cycle LR等技巧。
+* Try using more powerful models such as PointNet++, PU-Net, EdgeConv, etc.
+* Add Earth Mover's Distance (EMD), Repulsion Loss, multi-scale feature fusion, and post-processing techniques (such as Voxel filtering, kNN smoothing).
+* Can be expanded to larger-scale datasets such as NuScenes, and apply mixed precision training, One-Cycle LR, and other techniques.
 
-## 授權方式
+## License
 
-本專案採用 MIT License 授權，可自由修改與應用於研究或產品開發。
+This project is licensed under the MIT License, allowing free modification and application in research or product development.
 
 ---
 
-歡迎提供意見、提交問題或貢獻程式碼。
+Feedback, issues, or code contributions are welcome.
