@@ -59,8 +59,7 @@ $$
 Adopts squared Chamfer distance:
 
 $$
-\operatorname{CD}(P,G)=\frac1{|G|}\sum_{g\in G}\min_{p\in P}\|g-p\|^{2}
-+\frac1{|P|}\sum_{p\in P}\min_{g\in G}\|p-g\|^{2}
+\mathrm{CD}(P,G)=\frac{1}{|G|} \sum_{g \in G} \min_{p \in P} \|g-p\|^2 + \frac{1}{|P|} \sum_{p \in P} \min_{g \in G} \|p-g\|^2
 $$
 
 where G is the ground truth high-resolution point cloud. Adam optimizer is used; ReduceLROnPlateau dynamically reduces learning rate combined with Early-Stopping.

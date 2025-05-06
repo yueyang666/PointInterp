@@ -57,8 +57,7 @@ $$
 採平方 Chamfer 距離
 
 $$
-\operatorname{CD}(P,G)=\frac1{|G|}\sum_{g\in G}\min_{p\in P}\|g-p\|^{2}
-+\frac1{|P|}\sum_{p\in P}\min_{g\in G}\|p-g\|^{2}
+\mathrm{CD}(P,G)=\frac{1}{|G|} \sum_{g \in G} \min_{p \in P} \|g-p\|^2 + \frac{1}{|P|} \sum_{p \in P} \min_{g \in G} \|p-g\|^2
 $$
 
 其中 G 為真實高環點雲。優化器用 Adam；ReduceLROnPlateau 動態調降學習率並結合 Early‑Stopping。
