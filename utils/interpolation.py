@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial import cKDTree
 
+
 def interpolate_lidar_rings(
     pc: np.ndarray,
     original_num_rings: int = 32,
@@ -63,7 +64,6 @@ def _angle_binning_and_midpoints(
 
     return np.vstack(mids) if mids else np.empty((0, 3))
 
-
 def _enforce_exact_rings(
     merged: np.ndarray,
     target_num_rings: int,
@@ -98,7 +98,6 @@ def _enforce_exact_rings(
         final_pts.append(pts_i)
     return np.vstack(final_pts)
 
-
 def _azimuth_balance(
     merged: np.ndarray,
     target_num_rings: int,
@@ -124,5 +123,3 @@ def _azimuth_balance(
     if additions:
         merged = np.vstack([merged] + additions)
     return merged
-
-

@@ -5,12 +5,14 @@ import matplotlib.pyplot as plt
 import os
 from datetime import datetime
 from tqdm import tqdm
+from typing import List
 
 from utils.io import load_point_clouds   
 from utils.metrics import chamfer_distance_kdtree
 from pointnet_sr_mini import PointNetSRMini   
 
-def analyze_losses(loss_array, title, filename_suffix):
+
+def analyze_losses(loss_array: List[float], title: str, filename_suffix: str):
     loss_array = np.array(loss_array)
     average_loss = np.mean(loss_array)
     std_loss = np.std(loss_array)
@@ -62,7 +64,7 @@ def analyze_losses(loss_array, title, filename_suffix):
     plt.show()
     print(f"\n{title} 曲線圖已儲存到: {save_path}")
 
-def analyze_DL_all(filepath):
+def analyze_DL_all(filepath: str):
     """
     使用兩個 PointNet-SR-mini 模型 (16➔32, 32➔64) 進行推理與 Chamfer Distance 分析。
 
@@ -108,7 +110,7 @@ def analyze_DL_all(filepath):
 
     # --- 定義差集提取 ---
     from scipy.spatial import cKDTree
-    def get_delta(orig: np.ndarray, tgt: np.ndarray, thr=0.05):
+    def get_delta(orig: np.ndarray, tgt: np.ndarray, thr: float=0.05):
         tree_o = cKDTree(orig)
         d2, _ = tree_o.query(tgt, k=1)
         diff_mask = d2 > thr

@@ -5,6 +5,7 @@ import glob
 import h5py
 import numpy as np
 from tqdm import tqdm
+from typing import List
 from utils.io import save_multi_to_h5
 
 def load_kitti_bin(bin_file: str) -> np.ndarray:
@@ -35,7 +36,7 @@ def split_by_ring(
     return pc[mask]
 
 
-def collect_bin_files(bin_patterns, max_files=None):
+def collect_bin_files(bin_patterns: List[str], max_files: int=None) -> List[str]:
     """
     根據一或多個 glob pattern 收集 .bin 檔案，並依序排序、截斷。
     """
@@ -48,7 +49,7 @@ def collect_bin_files(bin_patterns, max_files=None):
 
 
 def kitti_multiring_to_h5(
-    bin_patterns: list,
+    bin_patterns: List[str],
     output_h5: str,
     orig_rings: int = 64,
     max_files: int = None):
