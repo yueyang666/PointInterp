@@ -31,25 +31,25 @@ This project provides the following main functionalities:
 This project proposes a "difference set-point completion" super-resolution algorithm for sparse LiDAR scan lines, with a workflow divided into interpolation baseline and deep enhancement layers.
 
 **1. Interpolation Baseline**  
-First, divide the N-line point cloud into bins based on elevation angle θ=arcsin(z/r); for adjacent rings, use KD-Tree to pair and insert midpoints:
+First, divide the N-line point cloud into bins based on elevation angle $\theta=\arcsin\frac{z}{r}$; for adjacent rings, use KD-Tree to pair and insert midpoints:
 
 $$
 p_{\text{mid}}=\tfrac12(p_i+p_j)
 $$
 
-Then, evenly supplement at azimuth angle φ (0–2π) with Δφ=0.5° to ensure the final number of rings precisely equals the target R\_t. This step can independently serve as a traditional baseline.
+Then, evenly supplement at azimuth angle $\varphi \in (0, 2\pi)$ with $\Delta\varphi = 0.5^\circ$ to ensure the final number of rings precisely equals the target $R_t$. This step can independently serve as a traditional baseline.
 
 **2. Difference Set Extraction**  
-For the original low-resolution point cloud P\_orig and high-resolution point cloud P\_tgt, compute:
+For the original low-resolution point cloud $P_{orig}$ and high-resolution point cloud $P_{tgt}$, compute:
 
 $$
 \Delta P=\{\,t\in P_{\text{tgt}}\mid\min_{o\in P_{\text{orig}}}\|t-o\|>\tau\}
 $$
 
-(τ≈0.05 m) as the set of points to be completed.
+$(\tau \approx 0.05\,\mathrm{m})$ as the set of points to be completed.
 
 **3. PointNet-SR-Mini**  
-For ΔP( B×N×3 ), first extract features f\_i∈ℝ²⁵⁶ using 1×1 convolution, then obtain a global vector g∈ℝ²⁵⁶ through max-pooling. After concatenation, output the offset o, and finally:
+For $\Delta P (B \times N \times 3)$, first extract features $f_i \in \mathbb{R}^{256}$ using $1 \times 1$ convolution, then obtain a global vector $g \in \mathbb{R}^{256}$ through max-pooling. After concatenation, output the offset $o$, and finally:
 
 $$
 P_{\text{pred}}=\Delta P+o
@@ -66,7 +66,7 @@ where G is the ground truth high-resolution point cloud. Adam optimizer is used;
 
 **5. Deep Learning Model**  
 
-```scss
+```plaintext
 Input (B, N, 3)
       ↓
 MLP1 (Conv1D 3→64→128→256)
@@ -82,13 +82,13 @@ Decoder (Conv1D 1280→512→256→128→3)
 Output: Predicted Offsets + Input
 ```
 
-![images](./figures/architecture.png)
+![architecture](./figures/architecture.png)
 
 **6. Results**
 On the KITTI dataset, the 16→32 line average CD improves by about 10% compared to interpolation, while the 32→64 line improves by over 60%. Real-time inference is possible on an RTX 3080. The algorithm is lightweight and easy to train, and can also be replaced with deeper models such as PointNet++, PU-Net, etc. for further quality improvement.
 
 The figure below shows the error visualization result for a random frame from the KITTI Dataset, where cyan represents the Ground Truth, and red represents the difference set between the inference result and GT:
-![alt text](./figures/pcd_residual.png)
+![pcd_residual](./figures/pcd_residual.png)
 
 ## Project Structure
 ```plaintext
@@ -148,17 +148,16 @@ pip install torch torchvision open3d scipy h5py tqdm matplotlib numpy
 
 2. Execute the following command for data conversion:
 
-```bash
-python dataset_to_h5.py
-```
-
-This will generate an HDF5 file (default name `verify_data.h5`) containing 16, 32, and 64-line point clouds.
+    ```bash
+    python dataset_to_h5.py
+    ```
+    This will generate an HDF5 file (default name `verify_data.h5`) containing 16, 32, and 64-line point clouds.
 
 3. Move the generated file to the `dataset/` folder:
 
-```bash
-mv verify_data.h5 dataset/train_sample148.h5
-```
+    ```bash
+    mv verify_data.h5 dataset/train_sample148.h5
+    ```
 
 ## Model Training Method
 
@@ -200,13 +199,13 @@ ckpt_srmini/
 Use the neural network model for inference and calculate Chamfer Distance:
 
 ```bash
-python your_script.py --filepath dataset/test_sample148.h5 --interpolation dl
+python analyze.py --filepath dataset/test_sample148.h5 --interpolation dl
 ```
 
 ### Traditional Interpolation Analysis Baseline
 
 ```bash
-python your_script.py --filepath dataset/test_sample148.h5 --interpolation linear
+python analyze.py --filepath dataset/test_sample148.h5 --interpolation linear
 ```
 
 ### Single-Frame Point Cloud Real-Time Visualization
@@ -218,25 +217,26 @@ python main.py
 ```
 
 ## Analysis Results
+
 The following information uses the `test_sample148.h5` test set
 * **16 lines→32 lines**: Limited by the sparsity of the original data, the average Chamfer Distance is about 0.34, improving by about 10% compared to the interpolation method.
-```plaintext
-=== 16->32 PointNet-SR-mini Analysis Report ===
-Total Frames: 148
-Average Chamfer Distance: 0.345550
-Standard Deviation: 0.262420
-Maximum Chamfer Distance: 2.427180 (Frame 141)
-Minimum Chamfer Distance: 0.112630 (Frame 36)
-```
+    ```plaintext
+    === 16->32 PointNet-SR-mini Analysis Report ===
+    Total Frames: 148
+    Average Chamfer Distance: 0.345550
+    Standard Deviation: 0.262420
+    Maximum Chamfer Distance: 2.427180 (Frame 141)
+    Minimum Chamfer Distance: 0.112630 (Frame 36)
+    ```
 * **32 lines→64 lines**: The average Chamfer Distance is about 0.054, significantly optimized by over 60% compared to the interpolation method.
-```plaintext
-=== 32->64 PointNet-SR-mini Analysis Report ===
-Total Frames: 148
-Average Chamfer Distance: 0.054512
-Standard Deviation: 0.029365
-Maximum Chamfer Distance: 0.191678 (Frame 25)
-Minimum Chamfer Distance: 0.009076 (Frame 36)
-```
+    ```plaintext
+    === 32->64 PointNet-SR-mini Analysis Report ===
+    Total Frames: 148
+    Average Chamfer Distance: 0.054512
+    Standard Deviation: 0.029365
+    Maximum Chamfer Distance: 0.191678 (Frame 25)
+    Minimum Chamfer Distance: 0.009076 (Frame 36)
+    ```
 * All analysis curve charts are saved in the `figures/` folder.
 
 ## Suggestions

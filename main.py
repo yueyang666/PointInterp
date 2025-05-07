@@ -24,7 +24,7 @@ print(f"讀取時間：{time.time() - t0:.4f} s")
 print(f"資料集點雲數量: {len(pc16_list)}")
 
 frame = rd.randint(0,len(pc16_list)-1)
-print(f"隨機選擇第 {frame} 禎")
+print(f"隨機選擇第 {frame} 幀")
 pc16 = pc16_list[frame][:, :3]
 pc32 = pc32_list[frame][:, :3]
 pc64 = pc64_list[frame][:, :3]
@@ -43,10 +43,10 @@ with torch.no_grad():
 merged = np.vstack([pred, pc32])
 loss = chamfer_distance_kdtree(merged, pc64)
 
-print(f'原始禎數量{source.shape[0]}')
-print(f'插值禎數量{merged.shape[0]}')
-print(f'目標禎數量{target.shape[0]}')
-print(f"第 {frame} 禎 Chamfer Distance: {loss:.6f}")
+print(f'原始幀數量{source.shape[0]}')
+print(f'插值幀數量{merged.shape[0]}')
+print(f'目標幀數量{target.shape[0]}')
+print(f"第 {frame} 幀 Chamfer Distance: {loss:.6f}")
 
 original = o3d.geometry.PointCloud()
 original.points = o3d.utility.Vector3dVector(source)
