@@ -1,7 +1,9 @@
 import h5py
 import numpy as np
+from typing import Tuple, List
 
-def load_point_clouds(h5_path: str):
+
+def load_point_clouds(h5_path: str) -> Tuple[List[np.ndarry], List[np.ndarry], List[np.ndarry]]:
     """
     讀取 HDF5 中的 16/32/64 線點雲
     回傳三個 list[np.ndarray]
@@ -18,7 +20,7 @@ def load_point_clouds(h5_path: str):
             pc64.append(np.array(f['64'][s]))
     return pc16, pc32, pc64
 
-def save_multi_to_h5(output_path, pcs_16, pcs_32, pcs_full):
+def save_multi_to_h5(output_path: str, pcs_16: List[np.ndarray], pcs_32: List[np.ndarray], pcs_full: List[np.ndarray]):
     """
     把三種點雲一起儲存到 h5
     """

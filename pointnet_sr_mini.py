@@ -13,7 +13,7 @@ PointNet-SR-mini (Full Optimized Version)
 
 import os, random, argparse, math, h5py, time, json
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -25,7 +25,7 @@ from scipy.spatial import cKDTree
 # -------------------------------------------------
 # 0. 固定 random seed
 # -------------------------------------------------
-def set_seed(seed=42):
+def set_seed(seed: int=42):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -55,7 +55,7 @@ class SRDataset(Dataset):
         self.orig_ring, self.tgt_ring = orig_ring, tgt_ring
         self.frames = self._load_h5(h5_path)
 
-    def _load_h5(self, h5_path):
+    def _load_h5(self, h5_path: str) -> List[Tuple[np.ndarray, np.ndarray]]:
         with h5py.File(h5_path, 'r') as f:
             p_orig = list(f[str(self.orig_ring)].values())
             p_tgt  = list(f[str(self.tgt_ring)].values())
@@ -63,7 +63,7 @@ class SRDataset(Dataset):
                       for o,t in zip(p_orig, p_tgt)]
         return frames
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.frames)
 
     def _get_delta_and_gt(self, orig: np.ndarray, tgt: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -78,7 +78,7 @@ class SRDataset(Dataset):
         delta = tgt[diff_mask]
         return delta, gt
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         orig, tgt = self.frames[idx]
         delta, gt = self._get_delta_and_gt(orig, tgt)
         rng = np.random.default_rng()
@@ -106,7 +106,7 @@ class PointNetSRMini(nn.Module):
             nn.Conv1d(256, 128, 1), nn.ReLU(),
             nn.Conv1d(128, 3, 1))
 
-    def forward(self, pts):
+    def forward(self, pts: torch.Tensor) -> torch.Tensor:
         x = pts.transpose(1, 2)
         feat = self.mlp1(x)
         global_feat = torch.max(feat, 2)[0]
@@ -118,7 +118,7 @@ class PointNetSRMini(nn.Module):
 # -------------------------------------------------
 # 4. Trainer
 # -------------------------------------------------
-def train(args):
+def train(args: argparse.Namespace):
     if torch.cuda.is_available():
         print(f"[INFO] System find GPU")
     else:

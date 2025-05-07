@@ -25,7 +25,7 @@ def chamfer_distance_kdtree(pred: np.ndarray, gt: np.ndarray) -> float:
     loss = np.mean(dist_pred_to_gt**2) + np.mean(dist_gt_to_pred**2)
     return loss
 
-def get_delta(orig: np.ndarray, tgt: np.ndarray, thr=0.05):
+def get_delta(orig: np.ndarray, tgt: np.ndarray, thr=0.05) -> np.ndarray:
     """
     計算 tgt 相對於 orig 的差集 (delta)，
     只保留那些到 orig 最近距離 > thr 的 tgt 點。
