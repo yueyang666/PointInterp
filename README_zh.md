@@ -38,11 +38,12 @@ $$
 再於方位角 $\varphi \in (0, 2\pi)$ 以 $\Delta\varphi = 0.5^\circ$ 均衡抽補，確保最終環數精確為目標 $R_t$ 。該步可單獨作為傳統基準。
 
 **2. 差集擷取**  
-對原始低環點雲 $P_{orig}$ 與高環點雲 $P_{tgt}$，取
+對原始低環點雲 $P_{orig}$ 與高環點雲 $P_{tgt}$ ，取
 
 $$
 \Delta P=\{\,t\in P_{\text{tgt}}\mid\min_{o\in P_{\text{orig}}}\|t-o\|>\tau\}
-$$
+$$  
+
 $(\tau \approx 0.05\,\mathrm{m})$ 作為待補點集合。
 
 **3. PointNet‑SR‑Mini**  

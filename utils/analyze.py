@@ -7,6 +7,7 @@ from datetime import datetime
 from tqdm import tqdm
 from typing import List
 
+from utils.interpolation import interpolate_lidar_rings
 from utils.io import load_point_clouds   
 from utils.metrics import chamfer_distance_kdtree
 from pointnet_sr_mini import PointNetSRMini   
@@ -168,6 +169,54 @@ def analyze_DL_all(filepath: str):
     else:
         print("[WARN] 32->64 沒有計算出 loss")
 
+def analyze_all(filepath):
+    # === 載入點雲 ===
+    print(f"程式開始, 讀取點雲中...")
+    t0 = time.time()
+    pc16_list, pc32_list, pc64_list = load_point_clouds(filepath)
+    print(f"讀取時間：{time.time() - t0:.4f} s")
+    print(f"16線資料數量: {len(pc16_list)} 筆")
+    print(f"32線資料數量: {len(pc32_list)} 筆")
+
+    # === 開始計算 Chamfer Distance ===
+    losses_16to32 = []
+    losses_32to64 = []
+
+    start_time = time.time()
+
+    # --- 第一組：16 ➔ 32
+    print("\n開始 16插值32 並計算 Chamfer Distance...")
+    for idx in tqdm(range(len(pc16_list)), desc="16->32 Frames"):
+        pc16 = pc16_list[idx][:, :3]
+        pc32 = pc32_list[idx][:, :3]
+
+        pc_interp = interpolate_lidar_rings(pc16, original_num_rings=16, target_num_rings=32, distance_thresh = 1.5)
+        loss = chamfer_distance_kdtree(pc_interp, pc32)
+        losses_16to32.append(loss)
+
+    # --- 第二組：32 ➔ 64
+    print("\n開始 32插值64 並計算 Chamfer Distance...")
+    for idx in tqdm(range(len(pc32_list)), desc="32->64 Frames"):
+        pc32 = pc32_list[idx][:, :3]    
+        pc64 = pc64_list[idx][:, :3]
+
+        pc_interp = interpolate_lidar_rings(pc32, original_num_rings=32, target_num_rings=64)
+        loss = chamfer_distance_kdtree(pc_interp, pc64)
+        losses_32to64.append(loss)
+
+    total_time = time.time() - start_time
+    print(f"\n全部計算完成，總耗時 {total_time:.2f} 秒")
+
+    # 分別分析兩組
+    if not losses_16to32 == []:
+        analyze_losses(losses_16to32, "16線插值32線 Chamfer Distance", "16to32")
+    else:
+        print("16線插值32線 跳過")
+    if not losses_32to64 == []:
+        analyze_losses(losses_32to64, "32線插值64線 Chamfer Distance", "32to64")
+    else:
+        print("32線插值64線 跳過")
+
 if __name__ == "__main__":
     """
     主程式入口
@@ -208,7 +257,6 @@ if __name__ == "__main__":
     if args.interpolation == 'dl':
         analyze_DL_all(args.filepath)
     elif args.interpolation == 'linear':
-        print("[INFO] 使用普通插值進行分析 (尚未實作)")
-        # TODO: 這裡可以放 linear interpolation 分析的函式
+        analyze_all(args.filepath)
     else:
         raise ValueError(f"不支援的補點方法: {args.interpolation}")
