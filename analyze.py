@@ -109,15 +109,6 @@ def analyze_DL_all(filepath: str):
     pc16_list, pc32_list, pc64_list = load_point_clouds(filepath)
     print(f"[INFO] 讀取完成，耗時 {time.time() - t0:.2f} 秒")
 
-    # --- 定義差集提取 ---
-    from scipy.spatial import cKDTree
-    def get_delta(orig: np.ndarray, tgt: np.ndarray, thr: float=0.05):
-        tree_o = cKDTree(orig)
-        d2, _ = tree_o.query(tgt, k=1)
-        diff_mask = d2 > thr
-        delta = tgt[diff_mask]
-        return delta
-
     # --- 推理並計算 Chamfer Distance ---
     losses_16to32 = []
     losses_32to64 = []
@@ -127,12 +118,11 @@ def analyze_DL_all(filepath: str):
     for idx in tqdm(range(len(pc16_list)), desc="16to32"):
         pc16 = pc16_list[idx][:, :3]
         pc32 = pc32_list[idx][:, :3]
-        delta = get_delta(pc16, pc32)
+        # --- 插值處理（模擬 16→32 線） ---
+        interp = interpolate_lidar_rings(pc16, original_num_rings=16, target_num_rings=32, distance_thresh=1.5)
+        print(f"[INFO] 插值後點數: {interp.shape[0]}")
 
-        if delta.shape[0] == 0:
-            continue  # 有些 frame 可能找不到差集
-
-        delta_tensor = torch.from_numpy(delta).unsqueeze(0).float().to(device)
+        delta_tensor = torch.from_numpy(interp).unsqueeze(0).float().to(device)
 
         with torch.no_grad():
             pred = model_16to32(delta_tensor).squeeze(0).cpu().numpy()
@@ -145,12 +135,10 @@ def analyze_DL_all(filepath: str):
     for idx in tqdm(range(len(pc32_list)), desc="32to64"):
         pc32 = pc32_list[idx][:, :3]
         pc64 = pc64_list[idx][:, :3]
-        delta = get_delta(pc32, pc64)
-
-        if delta.shape[0] == 0:
-            continue
-
-        delta_tensor = torch.from_numpy(delta).unsqueeze(0).float().to(device)
+        # --- 插值處理（模擬 16→32 線） ---
+        interp = interpolate_lidar_rings(pc32, original_num_rings=16, target_num_rings=32, distance_thresh=1.5)
+        print(f"[INFO] 插值後點數: {interp.shape[0]}")
+        delta_tensor = torch.from_numpy(interp).unsqueeze(0).float().to(device)
 
         with torch.no_grad():
             pred = model_32to64(delta_tensor).squeeze(0).cpu().numpy()

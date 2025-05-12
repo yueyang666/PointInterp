@@ -3,7 +3,7 @@ import numpy as np
 from typing import Tuple, List
 
 
-def load_point_clouds(h5_path: str) -> Tuple[List[np.ndarry], List[np.ndarry], List[np.ndarry]]:
+def load_point_clouds(h5_path: str) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
     """
     讀取 HDF5 中的 16/32/64 線點雲
     回傳三個 list[np.ndarray]
